@@ -120,7 +120,7 @@ class ExtractItem(object):
                 pass
 
             times -= 1
-            time.sleep(5)
+            time.sleep(1)
         return None
 
 
@@ -136,7 +136,7 @@ class ExtractItem(object):
                 pass
 
             times -= 1
-            time.sleep(5)
+            time.sleep(1)
         return None
 
 
@@ -153,7 +153,10 @@ class ExtractItem(object):
             return None
 
         publishedtime = publishedtime[0].strip()
-        publishedtime = publishedtime[: publishedtime.index('日')+1]
+        try:
+            publishedtime = publishedtime[: publishedtime.index('日')+1]
+        except:
+            print publishedtime
         publishedtime = TimeTransform.date_to_struct(publishedtime)
         if publishedtime < self.starttime or publishedtime > self.endtime:
             return None
@@ -182,8 +185,8 @@ class ExtractItem(object):
         url = self.get_realurl(tmp_url)
         if not url:
             return None
-        self.log_item(item, 'Get item')
         item.url = url
+        self.log_item(item, 'Get item')
 
         html = self.get_html(url)
         if html:

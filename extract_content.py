@@ -94,7 +94,7 @@ class ExtractContent(object):
             group = self.remove_image(group)
             group = self.remove_video(group)
             text_a, text_b = self.remove_any_tag_but_a(group)
-            temp = (text_b - text_a) - 16
+            temp = (text_b - text_a) - 20
             group_value.append(temp)
 
         left, right = self.sum_max(group_value)
@@ -129,3 +129,13 @@ class ExtractContent(object):
 
         except:
             return ''
+
+
+if __name__ == '__main__':
+    f = open('1.html', 'r')
+    text = f.read()
+
+    e = ExtractContent()
+    content = e.extract_content(text)
+    print content
+    f.close()
