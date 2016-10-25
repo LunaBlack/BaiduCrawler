@@ -38,7 +38,7 @@ class ThreadCrawl(threading.Thread):
                 req = requests.get("http://www.baidu.com/s?", params=param, headers=header, timeout=4)
                 if req.status_code == 200:
                     path = "//div[@id='content_left']//div[@class='c-abstract']/text()"  # Xpath of abstract in BaiDu search results
-                    tree = lxml.etree.HTML(req.text)
+                    tree = lxml.etree.HTML(req.content)
                     res = tree.xpath(path)
                     if len(res) != 0:
                         return req
@@ -59,7 +59,7 @@ class ThreadCrawl(threading.Thread):
             try:
                 param[param.keys()[0]]['pn'] = (n - 1) * 10
                 req = self.get_req(param.values()[0])
-                html = req.text
+                html = req.content
                 res = lxml.etree.HTML(html).xpath(path)
                 self.out_queue.put({param.keys()[0]: html})
             except:
@@ -71,7 +71,7 @@ class ThreadCrawl(threading.Thread):
             p = self.queue.get()
             try:
                 req = self.get_req(p.values()[0])
-                res = req.text
+                res = req.content
                 self.read_nextpage(res, p)
                 self.out_queue.put({p.keys()[0]: res})
                 self.queue.task_done()
@@ -200,6 +200,13 @@ class Spider(object):
         rs = ReadSetting()
         rs.read_args(self.conn, self.database, self.webpages_table)
         self.read_starturls()
+
+
+
+        self.start_urls = {}
+        self.start_urls['http://news.sohu.com'] = '搜狐新闻'
+
+
 
         for url, name in self.start_urls.items():
             queue = Queue()

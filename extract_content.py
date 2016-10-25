@@ -6,7 +6,7 @@
 import re
 import lxml
 from utils import Utils
-
+import lxml.html.soupparser as soupparser
 
 
 class ExtractContent(object):
@@ -50,14 +50,14 @@ class ExtractContent(object):
         return len(''.join(text)), len(text_b)
 
 
-    def remove_image(self, s, n=50):
+    def remove_image(self, s, n=5):
         image = 'a' * n
         r = re.compile(r'''<img.*?>''', re.I|re.M|re.S)
         s = r.sub(image, s)
         return s
 
 
-    def remove_video(self, s, n=100):
+    def remove_video(self, s, n=10):
         video = 'a' * n
         r = re.compile(r'''<embed.*?>''', re.I|re.M|re.S)
         s = r.sub(video, s)
@@ -85,7 +85,7 @@ class ExtractContent(object):
         return left, right+1
 
 
-    def method_1(self, content, k=1):
+    def method_1(self, content, k=1, delta=12):
         tmp = content.split('\n')
         group_value = []
 
@@ -94,37 +94,53 @@ class ExtractContent(object):
             group = self.remove_image(group)
             group = self.remove_video(group)
             text_a, text_b = self.remove_any_tag_but_a(group)
-            temp = (text_b - text_a) - 20
+            temp = (text_b - text_a) - delta
             group_value.append(temp)
 
         left, right = self.sum_max(group_value)
         return left, right, len('\n'.join(tmp[:left])), len('\n'.join(tmp[:right]))
 
 
-    def get_main_div(self, html):
+    def get_main_div(self, req):
         try:
-            path = "//body//div[@class='main']"
-            tree = lxml.etree.HTML(html)
-            content = tree.xpath(path)
-            if content:
-                return ''.join([lxml.etree.tostring(i, encoding='utf8', method='html') for i in content])
+            if req.apparent_encoding:
+                encoding = req.apparent_encoding
+            elif req.encoding:
+                encoding = req.encoding
             else:
-                return html
+                encoding = 'utf8'
+
+            req.encoding = encoding
+            tree = soupparser.fromstring(req.text)
+
+            for t in ['main', 'view_text', 'main_content', 'ep-content-main', 'text clear']:
+                path = "//body//div[@class='{}']".format(t)
+                content = tree.xpath(path)
+                if content:
+                    return ''.join([lxml.etree.tostring(i, encoding='utf8', method='html') for i in content])
+
         except:
-            return html
+            return req.content
+
+        return req.content
 
 
-
-    def extract_content(self, content):
+    def extract_content(self, req):
         try:
-            content = self.get_main_div(content)
+            content = self.get_main_div(req)
             content = self.remove_empty_line(self.remove_js_css(content))
             left, right, x, y = self.method_1(content)
 
             content = '\n'.join(content.split('\n')[left:right])
             content = Utils.transform_coding(content)
-            r = re.compile(r'<.*?>', re.I|re.M|re.S)
-            s = r.sub(' ', content)
+
+            all_p = re.findall(r'''<p.*?>(.*?)</p>''', content, re.I|re.M|re.S)
+            if not all_p or list(set(all_p)) == ['']:
+                r = re.compile(r'<.*?>', re.I|re.M|re.S)
+                s = r.sub(' ', content)
+            else:
+                r = [lxml.etree.HTML('<p>'+i+'</p>').xpath('//p')[0].xpath('string(.)') for i in all_p]
+                s = '\n'.join(r)
             return s
 
         except:
@@ -132,10 +148,10 @@ class ExtractContent(object):
 
 
 if __name__ == '__main__':
-    f = open('1.html', 'r')
-    text = f.read()
+    import requests
+    url = 'http://news.sohu.com/20140804/n403061689.shtml' #'http://news.sohu.com/20140804/n403061689.shtml'#'http://news.qq.com/a/20140805/002722.htm'
+    req = requests.get(url)
 
     e = ExtractContent()
-    content = e.extract_content(text)
+    content = e.extract_content(req)
     print content
-    f.close()

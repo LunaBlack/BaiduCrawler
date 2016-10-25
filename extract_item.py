@@ -99,8 +99,38 @@ class ExtractItem(object):
             cur.execute(sql)
             self.conn.commit()
 
+            with open('html/%s'%item.title, 'w') as f:
+                f.write(item.url + '\n' + item.content)
+
         except Exception as e:
             pass
+
+
+    def parse_time(self, t):
+        if '日' in t:
+            t = t[: t.index('日')+1]
+            t = TimeTransform.date_to_struct(t)
+            return t
+
+        if '前' in t:
+            if '天' in t:
+                delta_d = int(t[: t.index('天')])
+                t = time.gmtime(time.time() - delta_d*24*60*60)
+                return t
+            elif '小时' in t:
+                delta_H = int(t[: t.index('小时')])
+                t = time.gmtime(time.time() - delta_H*60*60)
+                return t
+            elif '分钟' in t:
+                delta_M = int(t[: t.index('分钟')])
+                t = time.gmtime(time.time() - delta_M*60)
+                return t
+            elif '秒' in t:
+                delta_S = int(t[: t.index('秒')])
+                t = time.gmtime(time.time() - delta_S)
+                return t
+
+        return time.localtime()
 
 
     def get_realurl(self, tmp_url):
@@ -111,7 +141,7 @@ class ExtractItem(object):
                 tmp_page = requests.get(tmp_url, headers=header, allow_redirects=False)
 
                 if tmp_page.status_code == 200:
-                    urlMatch = re.search(r'URL=\'(.*?)\'', tmp_page.text.encode('utf-8'), re.S)
+                    urlMatch = re.search(r'URL=\'(.*?)\'', tmp_page.content.encode('utf-8'), re.S)
                     return urlMatch.group(1)
                 elif tmp_page.status_code == 302:
                     return tmp_page.headers.get('location')
@@ -124,14 +154,14 @@ class ExtractItem(object):
         return None
 
 
-    def get_html(self, url):
+    def get_html_request(self, url):
         times = 5
         while times:
             try:
                 header = {'User-Agent': self.user_agents[random.randint(0, len(self.user_agents) - 1)]}
                 req = requests.get(url, headers=header, timeout=4)
                 if req.status_code == 200:
-                    return req.text
+                    return req
             except:
                 pass
 
@@ -140,9 +170,17 @@ class ExtractItem(object):
         return None
 
 
+    def substring(self, text):
+        if text:
+            text = re.sub('&nbsp;', ' ', text)
+            text = re.sub('&gt;', '>', text)
+            text = re.sub('&lt;', '<', text)
+        return text
+
+
     def judge_item(self, item):
         for w in self.allwords:
-            if w not in item.title and w not in item.summary and w not in item.content:
+            if w not in item.title and w not in item.content:
                 return False
         return True
 
@@ -152,12 +190,7 @@ class ExtractItem(object):
         if not publishedtime:
             return None
 
-        publishedtime = publishedtime[0].strip()
-        try:
-            publishedtime = publishedtime[: publishedtime.index('日')+1]
-        except:
-            print publishedtime
-        publishedtime = TimeTransform.date_to_struct(publishedtime)
+        publishedtime = self.parse_time(publishedtime[0].strip())
         if publishedtime < self.starttime or publishedtime > self.endtime:
             return None
 
@@ -167,6 +200,7 @@ class ExtractItem(object):
 
         try:
             title = eval(element.xpath(".//div[@class='c-tools']//@data-tools")[0])['title']
+            title = title.split('_')[0]
             item.title = Utils.transform_coding(title)
         except:
             return None
@@ -188,9 +222,10 @@ class ExtractItem(object):
         item.url = url
         self.log_item(item, 'Get item')
 
-        html = self.get_html(url)
-        if html:
-            content = self.extractContent.extract_content(html)
+        req = self.get_html_request(url)
+        if req:
+            content = self.extractContent.extract_content(req)
+            content = self.substring(content)
             item.content = content
         else:
             item.content = ''
