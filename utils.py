@@ -5,11 +5,6 @@ import sys
 import re
 import time
 import chardet
-import urllib2
-import threading
-from Queue import Queue
-import requests
-import lxml
 import random
 
 

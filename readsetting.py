@@ -2,16 +2,15 @@
 
 
 import sys, os
-import time
 import datetime
 import json
 from time_transform import TimeTransform
 from utils import Utils
 
 
-class ReadSetting: #读取用户设置的信息,包括检索词
+class ReadSetting(object):  # 读取用户设置的信息,包括检索词
 
-    def __init__(self): #初始化,读取包含用户设置信息的文件
+    def __init__(self):  # 初始化,读取包含用户设置信息的文件
         if getattr(sys, 'frozen', False):
             dir_ = os.path.dirname(sys.executable)
         else:
@@ -27,7 +26,7 @@ class ReadSetting: #读取用户设置的信息,包括检索词
         self.read_classfy_dict()
 
 
-    def read_keywords(self): #读取检索的关键词
+    def read_keywords(self):  # 读取检索的关键词
         allwords = []
 
         for n, i in enumerate(self.text):

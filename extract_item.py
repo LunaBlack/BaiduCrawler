@@ -9,7 +9,6 @@ import requests
 import lxml
 import random
 import pymysql
-import ip_pool
 
 from time_transform import TimeTransform
 from extract_content import ExtractContent
