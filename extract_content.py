@@ -4,9 +4,119 @@
 # 该文件用于提取网页的正文部分，针对通用型网页
 
 import re
+import time
 import lxml
+import random
+import requests
 from utils import Utils
 import lxml.html.soupparser as soupparser
+from utils import USER_AGENTS
+
+
+
+class SpecialExtractContent(object):
+
+    def __init__(self):
+        pass
+
+
+    @classmethod
+    def sina_weibo_content(cls, url):
+        url = url.replace('weibo.com', 'weibo.cn')
+        times = 5
+
+        while times:
+            times -= 1
+            time.sleep(random.randint(1, 4))
+
+            try:
+                header = {'User-Agent': USER_AGENTS[random.randint(0, len(USER_AGENTS) - 1)]}
+                req = requests.get(url, headers=header, timeout=4)
+
+                if req.status_code == 200:
+                    html = req.content
+                    tree = lxml.etree.HTML(html)
+                    content_path = "//div[@id='M_']//span[@class='ctt']/a/text() | //div[@id='M_']//span[@class='ctt']/text()"
+                    content = tree.xpath(content_path)
+                    if not content:
+                        continue
+
+                    content = ''.join(content)
+                    content = Utils.transform_coding(content)
+                    if content.startswith(':'.decode('utf8')):
+                        content = content[1:]
+
+                    time_path = "//div[@id='M_']//span[@class='ct']/text()"
+                    t = tree.xpath(time_path)[0].strip()
+                    t = time.strptime(t, "%Y-%m-%d %H:%M:%S")
+                    return content, t
+
+            except Exception as e:
+                return '', None
+        return '', None
+
+
+    @classmethod
+    def qq_weibo_content(cls, req):
+        try:
+            html = req.content
+            tree = lxml.etree.HTML(html)
+            content_path = "//div[@id='orginCnt']//div[@id='msginfo']/a/text() | //div[@id='orginCnt']//div[@id='msginfo']/text() | \
+                            //div[@id='orginCnt']//div[@id='msginfo']/em/a/text() | //div[@id='orginCnt']//div[@id='msginfo']/em/text()"
+            content = tree.xpath(content_path)
+
+            content = ''.join(content)
+            content = Utils.transform_coding(content)
+
+            time_path = "//div[@id='orginCnt']//div[@class='pubInfo c_tx5']//a[@class='time']/text()"
+            t = tree.xpath(time_path)[0].strip()
+            t = time.strptime(t, "%Y年%m月%d日 %H:%M".decode('utf8'))
+            return content, t
+
+        except Exception as e:
+            return '', None
+
+
+    @classmethod
+    def baidu_tieba_content(cls, req):
+        try:
+            html = req.content
+            path = "//h3[@title]/text() | \
+                    //div[@class='p_postlist']//div[@class='d_post_content j_d_post_content '][1]/a/text() | \
+                    //div[@class='p_postlist']//div[@class='d_post_content j_d_post_content '][1]/text() | \
+                    //div[@class='p_postlist']//div[@class='d_post_content j_d_post_content  clearfix'][1]/a/text() | \
+                    //div[@class='p_postlist']//div[@class='d_post_content j_d_post_content  clearfix'][1]/text()"
+
+            tree = lxml.etree.HTML(html)
+            content = tree.xpath(path)
+
+            content = ''.join(content)
+            content = Utils.transform_coding(content)
+            content = '\n'.join(content.split(' '*12)).strip()
+            return content
+
+        except Exception as e:
+            return ''
+
+
+    @classmethod
+    def dizhentan_content(cls, req):
+        try:
+            html = req.content
+            path = "//h1/text() | \
+                    //div[@class='postmessage firstpost']//div[@class='t_msgfontfix']//td[@class='t_msgfont']//text() | \
+                    //div[@class='t_msgfontfix']//td[@class='t_msgfont']/text()"
+
+            tree = lxml.etree.HTML(html)
+            content = tree.xpath(path)
+
+            content = '\n'.join([i.strip() for i in content])
+            content = Utils.transform_coding(content)
+            return content
+
+        except Exception as e:
+            return ''
+
 
 
 class ExtractContent(object):
@@ -85,7 +195,7 @@ class ExtractContent(object):
         return left, right+1
 
 
-    def method_1(self, content, k=1, delta=12):
+    def method_1(self, content, k=1, delta=8):
         tmp = content.split('\n')
         group_value = []
 
@@ -101,33 +211,51 @@ class ExtractContent(object):
         return left, right, len('\n'.join(tmp[:left])), len('\n'.join(tmp[:right]))
 
 
-    def get_main_div(self, req):
-        try:
-            if req.apparent_encoding:
-                encoding = req.apparent_encoding
-            elif req.encoding:
-                encoding = req.encoding
-            else:
-                encoding = 'utf8'
+    def get_main_block(self, req):
+        req.encoding = Utils.get_req_encoding(req)
 
-            req.encoding = encoding
+        try:
             tree = soupparser.fromstring(req.text)
 
-            for t in ['main', 'view_text', 'main_content', 'ep-content-main', 'text clear']:
+            for t in ['main', 'view_text', 'main_content', 'WBA_content', 'ep-content-main', 'text clear', 'wh590 left', 'detailmain_lcon', 'detail_main_right_con', 'detialrcon']:
                 path = "//body//div[@class='{}']".format(t)
                 content = tree.xpath(path)
                 if content:
                     return ''.join([lxml.etree.tostring(i, encoding='utf8', method='html') for i in content])
 
+            for t in ['main_content']:
+                path = "//body//div[@id='{}']".format(t)
+                content = tree.xpath(path)
+                if content:
+                    return ''.join([lxml.etree.tostring(i, encoding='utf8', method='html') for i in content])
+
+            if req.url.startswith('http://eq.ah.gov.cn/'):
+                path = "//body//table//table//table//table//tr[11]"
+                content = tree.xpath(path)
+                if content:
+                    return ''.join([lxml.etree.tostring(i, encoding='utf8', method='html') for i in content])
+
         except:
-            return req.content
+            return req.text
 
-        return req.content
+        return req.text
 
 
-    def extract_content(self, req):
+    def extract_content(self, req, url):
+        if url.startswith('http://weibo.com'):
+            return SpecialExtractContent.sina_weibo_content(url)
+
+        if url.startswith('http://t.qq.com'):
+            return SpecialExtractContent.qq_weibo_content(req)
+
+        if url.startswith('http://tieba.baidu.com'):
+            return SpecialExtractContent.baidu_tieba_content(req)
+
+        if url.startswith('http://www.dizhentan.com'):
+            return SpecialExtractContent.dizhentan_content(req)
+
         try:
-            content = self.get_main_div(req)
+            content = self.get_main_block(req)
             content = self.remove_empty_line(self.remove_js_css(content))
             left, right, x, y = self.method_1(content)
 
@@ -147,11 +275,12 @@ class ExtractContent(object):
             return ''
 
 
+
+
 if __name__ == '__main__':
-    import requests
-    url = 'http://news.sohu.com/20140804/n403061689.shtml' #'http://news.sohu.com/20140804/n403061689.shtml'#'http://news.qq.com/a/20140805/002722.htm'
+    url = 'http://t.qq.com/p/t/433823069681890'  # 'http://www.dizhentan.com/thread-145837-1-1.html'  # 'http://news.qq.com/a/20140805/002722.htm'
     req = requests.get(url)
 
     e = ExtractContent()
-    content = e.extract_content(req)
+    content = e.extract_content(req, url)
     print content

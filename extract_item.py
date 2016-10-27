@@ -58,8 +58,8 @@ class ExtractItem(object):
     def __init__(self, starttime, endtime, allwords, classfy_dict,
                  user_agents, conn, webpages_table, log_table):
 
-        self.starttime = TimeTransform.date_to_struct(Utils.transform_coding(starttime))
-        self.endtime = TimeTransform.date_to_struct(Utils.transform_coding(endtime))
+        self.starttime = starttime
+        self.endtime = endtime
         self.allwords = allwords
         self.user_agents = user_agents
 
@@ -99,7 +99,7 @@ class ExtractItem(object):
             cur.execute(sql)
             self.conn.commit()
 
-            with open('html/%s'%item.title, 'w') as f:
+            with open(('html/%s'%item.title).split()[0], 'w') as f:
                 f.write(item.url + '\n' + item.content)
 
         except Exception as e:
@@ -107,26 +107,26 @@ class ExtractItem(object):
 
 
     def parse_time(self, t):
-        if '日' in t:
-            t = t[: t.index('日')+1]
+        if '日'.decode('utf8') in t:
+            t = t[: t.index('日'.decode('utf8'))+1]
             t = TimeTransform.date_to_struct(t)
             return t
 
-        if '前' in t:
-            if '天' in t:
-                delta_d = int(t[: t.index('天')])
+        if '前'.decode('utf8') in t:
+            if '天'.decode('utf8') in t:
+                delta_d = int(t[: t.index('天'.decode('utf8'))])
                 t = time.gmtime(time.time() - delta_d*24*60*60)
                 return t
-            elif '小时' in t:
-                delta_H = int(t[: t.index('小时')])
+            elif '小时'.decode('utf8') in t:
+                delta_H = int(t[: t.index('小时'.decode('utf8'))])
                 t = time.gmtime(time.time() - delta_H*60*60)
                 return t
-            elif '分钟' in t:
-                delta_M = int(t[: t.index('分钟')])
+            elif '分钟'.decode('utf8') in t:
+                delta_M = int(t[: t.index('分钟'.decode('utf8'))])
                 t = time.gmtime(time.time() - delta_M*60)
                 return t
-            elif '秒' in t:
-                delta_S = int(t[: t.index('秒')])
+            elif '秒'.decode('utf8') in t:
+                delta_S = int(t[: t.index('秒'.decode('utf8'))])
                 t = time.gmtime(time.time() - delta_S)
                 return t
 
@@ -180,31 +180,52 @@ class ExtractItem(object):
 
     def judge_item(self, item):
         for w in self.allwords:
-            if w not in item.title and w not in item.content:
+            if w not in item.title and w not in item.summary and w not in item.content:
                 return False
         return True
 
 
+    def get_publishedtime(self, element):
+        res = element.xpath(".//div[@class='bbs f13']/text()")
+        if res:
+            res = res[0]
+            res = res[res.index('发帖时间'.decode('utf8'))+5:]
+        else:
+            res = element.xpath(".//div[@class='c-abstract']//span[@class=' newTimeFactor_before_abs m']/text()")
+            if res:
+                res = res[0]
+            else:
+                return None
+
+        res = self.parse_time(res.strip())
+        if res < self.starttime or res >= self.endtime:
+            return False
+        return res
+
+
+
     def extract_item(self, element, source):
-        publishedtime = element.xpath(".//div[@class='c-abstract']//span[@class=' newTimeFactor_before_abs m']//text()")
-        if not publishedtime:
-            return None
-
-        publishedtime = self.parse_time(publishedtime[0].strip())
-        if publishedtime < self.starttime or publishedtime > self.endtime:
-            return None
-
         item = Item()
-        item.publishedtime = TimeTransform.struct_to_string(publishedtime)
         item.source = Utils.transform_coding(source)
 
+        # 提取发布时间publishedtime
+        publishedtime = self.get_publishedtime(element)
+        if publishedtime is None:
+            item.publishedtime = None
+        elif publishedtime is False:
+            return None
+        else:
+            item.publishedtime = TimeTransform.struct_to_string(publishedtime)
+
+        # 提取标题title（百度给出的标题）
         try:
             title = eval(element.xpath(".//div[@class='c-tools']//@data-tools")[0])['title']
-            title = title.split('_')[0]
+            title = title.split('_')[0].split('-')[0]
             item.title = Utils.transform_coding(title)
         except:
             return None
 
+        # 提取摘要summary（百度给出的摘要）
         try:
             summary = re.sub(element.xpath(".//div[@class='c-abstract']//span//text()")[0], '', ''.join(element.xpath(".//div[@class='c-abstract']//text()")), 1)
             item.summary = Utils.transform_coding(summary)
@@ -215,31 +236,52 @@ class ExtractItem(object):
             except:
                 return None
 
+        # 提取真实url
         tmp_url = eval(element.xpath(".//div[@class='c-tools']//@data-tools")[0])['url']
         url = self.get_realurl(tmp_url)
         if not url:
             return None
+        if not url.startswith('http://weibo.com') and not url.startswith('http://t.qq.com') and not item.publishedtime:
+            return None
         item.url = url
         self.log_item(item, 'Get item')
 
+        # 提取内容content（从原始网页提取）, 针对微博重新提取发布时间publishedtime
         req = self.get_html_request(url)
-        if req:
-            content = self.extractContent.extract_content(req)
-            content = self.substring(content)
-            item.content = content
-        else:
+        if not req:
             item.content = ''
+        else:
+            content = self.extractContent.extract_content(req, item.url)
+            if not isinstance(content, list) and not isinstance(content, tuple):
+                content = self.substring(content)
+                item.content = content
+            else:
+                content, t = content
+                if item.publishedtime:
+                    content = self.substring(content)
+                    item.content = content
+                elif not t:
+                    return None
+                elif t >= self.starttime and t < self.endtime:
+                    item.publishedtime = TimeTransform.struct_to_string(t)
+                    content = self.substring(content)
+                    item.content = content
+                else:
+                    return None
 
+        # 再次判断是否包含指定的检索词
         if not self.judge_item(item):
             self.log_item(item, 'Drop item not containing keywords')
             return None
 
+        # 计算分类typename
         self.classfyItem.classfy_item(item)
         self.log_item(item, 'Classify item')
 
+        # 统一编码
         for k in item.__dict__.keys():
             try:
-                item.__dict__[k] = item.__dict__[k].encode('utf8')
+                item.__dict__[k] = item.__dict__[k].encode('utf8').strip()
             except:
                 pass
 

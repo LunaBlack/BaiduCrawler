@@ -66,3 +66,13 @@ class Utils(object):
                 pass
         return text
 
+
+    @staticmethod
+    def get_req_encoding(req):
+        if req.apparent_encoding:
+            encoding = req.apparent_encoding
+        elif req.encoding:
+            encoding = req.encoding
+        else:
+            encoding = 'utf8'
+        return encoding

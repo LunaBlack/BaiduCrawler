@@ -3,7 +3,10 @@
 
 import sys, os
 import time
+import datetime
 import json
+from time_transform import TimeTransform
+from utils import Utils
 
 
 class ReadSetting: #读取用户设置的信息,包括检索词
@@ -43,7 +46,9 @@ class ReadSetting: #读取用户设置的信息,包括检索词
             text = text.split(';')
 
             times = text[0]
-            self.starttime, self.endtime = times.split(' ')
+            starttime, endtime = times.split(' ')
+            self.starttime = TimeTransform.date_to_struct(Utils.transform_coding(starttime))
+            self.endtime = TimeTransform.datetime_to_struct((TimeTransform.date_to_datetime(Utils.transform_coding(endtime)) + datetime.timedelta(days=1)))
 
             if len(text) > 1:
                 words = list(set(text[1].split()))

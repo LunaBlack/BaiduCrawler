@@ -54,7 +54,7 @@ class ThreadCrawl(threading.Thread):
         n = 1
         path = "//div[@id='page']/a/text()"
         res = lxml.etree.HTML(html).xpath(path)
-        while '下一页>' in res:
+        while '下一页>'.decode('utf8') in res:
             n += 1
             try:
                 param[param.keys()[0]]['pn'] = (n - 1) * 10
@@ -203,8 +203,8 @@ class Spider(object):
 
 
 
-        self.start_urls = {}
-        self.start_urls['http://news.sohu.com'] = '搜狐新闻'
+        # self.start_urls = {}
+        # self.start_urls['http://dizhentan.com/'] = '地震坛'
 
 
 
