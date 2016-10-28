@@ -14,6 +14,7 @@ from utils import USER_AGENTS
 
 
 
+# 某些特定网站的页面内容提取方法：新浪微博、腾讯微博、百度贴吧、地震坛(论坛)
 class SpecialExtractContent(object):
 
     def __init__(self):
@@ -23,11 +24,11 @@ class SpecialExtractContent(object):
     @classmethod
     def sina_weibo_content(cls, url):
         url = url.replace('weibo.com', 'weibo.cn')
-        times = 5
+        times = 3
 
         while times:
             times -= 1
-            time.sleep(random.randint(1, 4))
+            time.sleep(random.randint(1, 3))
 
             try:
                 header = {'User-Agent': USER_AGENTS[random.randint(0, len(USER_AGENTS) - 1)]}
@@ -81,7 +82,7 @@ class SpecialExtractContent(object):
     def baidu_tieba_content(cls, req):
         try:
             html = req.content
-            path = "//h3[@title]/text() | \
+            path = "//h1[@title]/text() | //h3[@title]/text() | \
                     //div[@class='p_postlist']//div[@class='d_post_content j_d_post_content '][1]/a/text() | \
                     //div[@class='p_postlist']//div[@class='d_post_content j_d_post_content '][1]/text() | \
                     //div[@class='p_postlist']//div[@class='d_post_content j_d_post_content  clearfix'][1]/a/text() | \
@@ -119,6 +120,7 @@ class SpecialExtractContent(object):
 
 
 
+# 通用型页面内容提取方法
 class ExtractContent(object):
 
     def __init__(self):

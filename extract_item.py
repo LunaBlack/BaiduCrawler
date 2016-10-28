@@ -9,6 +9,7 @@ import requests
 import lxml
 import random
 import pymysql
+import hashlib
 
 from time_transform import TimeTransform
 from extract_content import ExtractContent
@@ -16,9 +17,11 @@ from utils import USER_AGENTS, Utils
 
 
 
+# 定义item类
 class Item(object):
 
     def __init__(self):
+        self.urlhash = None
         self.publishedtime = None
         self.source = None
         self.title = None
@@ -29,6 +32,7 @@ class Item(object):
 
 
 
+# 根据title、content等信息对item分类
 class ClassifyItem(object):
 
     def __init__(self, classfy_dict):
@@ -37,7 +41,7 @@ class ClassifyItem(object):
 
     def classfy_item(self, item):
         typename = []
-        text = item.title + item.content
+        text = item.title + item.summary + item.content
 
         for each in self.classfy_dict.keys():
             for word in self.classfy_dict[each]:
@@ -52,6 +56,7 @@ class ClassifyItem(object):
 
 
 
+# 提取item的title、publishedtime等信息, 记录log, 并将符合条件的item存入数据库
 class ExtractItem(object):
 
     def __init__(self, starttime, endtime, allwords, classfy_dict,
@@ -87,19 +92,17 @@ class ExtractItem(object):
     def save_item(self, item):
         try:
             cur = self.conn.cursor()
-            sql = '''INSERT INTO `%s` VALUES (null, '%s', '%s', '%s', '%s', '%s', '%s', '%s', null)''' % (self.webpages_table,
-                                                                                                          item.publishedtime,
-                                                                                                          item.typename,
-                                                                                                          item.source,
-                                                                                                          item.title,
-                                                                                                          item.summary,
-                                                                                                          item.content,
-                                                                                                          item.url)
+            sql = '''INSERT INTO `%s` VALUES (null, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', null)''' % (self.webpages_table,
+                                                                                                                item.urlhash,
+                                                                                                                item.publishedtime,
+                                                                                                                item.typename,
+                                                                                                                item.source,
+                                                                                                                item.title,
+                                                                                                                item.summary,
+                                                                                                                item.content,
+                                                                                                                item.url)
             cur.execute(sql)
             self.conn.commit()
-
-            with open(('html/%s'%item.title).split()[0], 'w') as f:
-                f.write(item.url + '\n' + item.content)
 
         except Exception as e:
             pass
@@ -133,7 +136,7 @@ class ExtractItem(object):
 
 
     def get_realurl(self, tmp_url):
-        times = 5
+        times = 3
         while times:
             try:
                 header = {'User-Agent': self.user_agents[random.randint(0, len(self.user_agents) - 1)]}
@@ -149,12 +152,12 @@ class ExtractItem(object):
                 pass
 
             times -= 1
-            time.sleep(1)
+            time.sleep(random.randint(1, 3))
         return None
 
 
     def get_html_request(self, url):
-        times = 5
+        times = 3
         while times:
             try:
                 header = {'User-Agent': self.user_agents[random.randint(0, len(self.user_agents) - 1)]}
@@ -165,7 +168,7 @@ class ExtractItem(object):
                 pass
 
             times -= 1
-            time.sleep(1)
+            time.sleep(random.randint(1, 3))
         return None
 
 
@@ -245,6 +248,15 @@ class ExtractItem(object):
         item.url = url
         self.log_item(item, 'Get item')
 
+        # 计算urlhash（哈希值, 避免重复插入数据库）
+        item.urlhash = hashlib.md5(url).hexdigest()
+        cur = self.conn.cursor()
+        sql = "SELECT * FROM `%s` WHERE urlhash='%s'" % (self.webpages_table, item.urlhash)
+        cur.execute(sql)
+        if cur.fetchall():
+            self.log_item(item, 'Drop duplicated item')
+            return None
+
         # 提取内容content（从原始网页提取）, 针对微博重新提取发布时间publishedtime
         req = self.get_html_request(url)
         if not req:
@@ -260,12 +272,14 @@ class ExtractItem(object):
                     content = self.substring(content)
                     item.content = content
                 elif not t:
+                    self.log_item(item, 'Drop item whose publishedtime not be extracted')
                     return None
                 elif t >= self.starttime and t < self.endtime:
                     item.publishedtime = TimeTransform.struct_to_string(t)
                     content = self.substring(content)
                     item.content = content
                 else:
+                    self.log_item(item, 'Drop item not in the specified time period')
                     return None
 
         # 再次判断是否包含指定的检索词

@@ -20,6 +20,7 @@ from readsetting import ReadSetting
 
 
 
+# 按不同的站点获取百度的搜索结果
 class ThreadCrawl(threading.Thread):
 
     def __init__(self, queue, out_queue, user_agents):
@@ -30,7 +31,7 @@ class ThreadCrawl(threading.Thread):
 
 
     def get_req(self, param):
-        times = 5
+        times = 3
         while times:
             try:
                 header = {'User-Agent': self.user_agents[random.randint(0, len(self.user_agents) - 1)]}
@@ -45,7 +46,7 @@ class ThreadCrawl(threading.Thread):
                 pass
 
             times -= 1
-            time.sleep(1)
+            time.sleep(random.randint(1, 3))
         return req
 
 
@@ -79,6 +80,7 @@ class ThreadCrawl(threading.Thread):
 
 
 
+# 解析百度检索结果页面, 并调用ExtractItem类逐个解析出item
 class ExtractHtml(threading.Thread):
 
     def __init__(self, queue, starttime, endtime, allwords, classfy_dict, user_agents, conn, webpages_table, log_table):
@@ -105,6 +107,7 @@ class ExtractHtml(threading.Thread):
 
 
 
+# 读取数据库参数, 连接数据库, 启动爬虫
 class Spider(object):
 
     def __init__(self):
@@ -168,6 +171,7 @@ class Spider(object):
             # 创建网页表
             sql = '''CREATE TABLE IF NOT EXISTS %s (
             id INT(11) NOT NULL AUTO_INCREMENT,
+            urlhash CHAR(32) UNIQUE,
             publishedtime VARCHAR(30) DEFAULT NULL,
             typename VARCHAR(255) DEFAULT NULL,
             source VARCHAR(255) DEFAULT NULL,
@@ -199,13 +203,6 @@ class Spider(object):
         rs = ReadSetting()
         rs.read_args(self.conn, self.database, self.webpages_table)
         self.read_starturls()
-
-
-
-        # self.start_urls = {}
-        # self.start_urls['http://dizhentan.com/'] = '地震坛'
-
-
 
         for url, name in self.start_urls.items():
             queue = Queue()
