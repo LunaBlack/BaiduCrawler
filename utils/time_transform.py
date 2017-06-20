@@ -9,7 +9,7 @@ import chardet
 
 
 
-class TimeTransform(object):
+class TimeTransform(object):  # 时间的各种表达形式之间的转换
 
     def __init__(self):
         pass

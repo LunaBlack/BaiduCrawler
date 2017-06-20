@@ -6,6 +6,7 @@ import re
 import time
 import chardet
 import random
+import threading
 
 
 USER_AGENTS = ['Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20130406 Firefox/23.0',
@@ -45,6 +46,20 @@ USER_AGENTS = ['Mozilla/5.0 (Windows NT 6.1; WOW64; rv:23.0) Gecko/20130406 Fire
 
 
 
+class MyThread(threading.Thread):
+
+    def __init__(self, func, queue, l):
+        super(MyThread, self).__init__()
+        self.func = func
+        self.queue = queue
+        self.l = l
+
+
+    def run(self):
+        self.func(self.queue, self.l)
+
+
+
 class Utils(object):
 
     def __init__(self):
@@ -52,7 +67,7 @@ class Utils(object):
 
 
     @staticmethod
-    def transform_coding(text):
+    def transform_coding(text):  # 将文本转换为unicode形式
         if not isinstance(text, unicode):
             text_encode = chardet.detect(text)['encoding']
             try:
@@ -63,11 +78,11 @@ class Utils(object):
 
 
     @staticmethod
-    def get_req_encoding(req):
-        if req.apparent_encoding:
-            encoding = req.apparent_encoding
-        elif req.encoding:
-            encoding = req.encoding
+    def get_response_encoding(response):  # 获取response的编码方式
+        if response.apparent_encoding:
+            encoding = response.apparent_encoding
+        elif response.encoding:
+            encoding = response.encoding
         else:
             encoding = 'utf8'
         return encoding
