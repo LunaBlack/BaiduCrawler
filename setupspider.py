@@ -22,7 +22,7 @@ from utils.utils import USER_AGENTS, MyThread
 class Spider(object):
 
     def __init__(self):
-        # self.num_crawler = 3  # 最多同时爬取的站点数
+        self.num_crawler = 5  # 最多同时爬取的站点数
         self.user_agents = USER_AGENTS
 
 
@@ -125,48 +125,14 @@ class Spider(object):
         self.conn.commit()
 
 
-    # # 针对每个起始url（即需要爬取的站点）构建一个爬虫
-    # def create_crawler(self, host_name):
-    #     webname, hostname = host_name
-    #     crawler = ThreadCrawler(webname, hostname, self.allwords, self.starttime, self.endtime, self.classify_dict,
-    #                             self.webpages_table, self.log_table, self.user_agents,
-    #                             self.host, self.port, self.user, self.password, self.database)
-    #     crawler.run()
-    #
-    #
-    # # 启动爬虫
-    # def run(self):
-    #     self.clean_tables()  # 清空表格, 准备记录本次数据
-    #
-    #     rs = ReadSetting()
-    #     rs.read_args()
-    #     self.read_starturls()
-    #     self.allwords = rs.allwords
-    #     self.starttime = rs.starttime
-    #     self.endtime = rs.endtime
-    #     self.classify_dict = rs.classfy_dict
-    #
-    #     hostname_list = []
-    #     for url, webname in self.start_urls.items():
-    #         hostname = urllib2.urlparse.urlparse(url).hostname
-    #         if hostname.startswith('www.') and hostname != 'www.gov.cn':
-    #             hostname = hostname[4:]
-    #         hostname_list.append([webname, hostname])
-    #
-    #     pool = Pool(self.num_crawler)
-    #     pool.map(self.create_crawler, hostname_list)
-    #     pool.close()
-    #     pool.join()
-    #
-    #     self.conn.close()
-
-
     # 针对每个起始url（即需要爬取的站点）构建一个爬虫
-    def create_crawler(self, webname, hostname):
+    def create_crawler(self, host_name):
+        webname, hostname = host_name
         crawler = ThreadCrawler(webname, hostname, self.allwords, self.starttime, self.endtime, self.classify_dict,
                                 self.webpages_table, self.log_table, self.user_agents,
                                 self.host, self.port, self.user, self.password, self.database)
         crawler.run()
+
 
     # 启动爬虫
     def run(self):
@@ -187,20 +153,52 @@ class Spider(object):
                 hostname = hostname[4:]
             hostname_list.append([webname, hostname])
 
-        for webname, hostname in hostname_list:
-            self.create_crawler(webname, hostname)
+        pool = Pool(self.num_crawler)
+        pool.map(self.create_crawler, hostname_list)
+        pool.close()
+        pool.join()
 
         self.conn.close()
+
+
+    # # 针对每个起始url（即需要爬取的站点）构建一个爬虫
+    # def create_crawler(self, webname, hostname):
+    #     crawler = ThreadCrawler(webname, hostname, self.allwords, self.starttime, self.endtime, self.classify_dict,
+    #                             self.webpages_table, self.log_table, self.user_agents,
+    #                             self.host, self.port, self.user, self.password, self.database)
+    #     crawler.run()
+    #
+    # # 启动爬虫
+    # def run(self):
+    #     self.clean_tables()  # 清空表格, 准备记录本次数据
+    #
+    #     rs = ReadSetting()
+    #     rs.read_args()
+    #     self.read_starturls()
+    #     self.allwords = rs.allwords
+    #     self.starttime = rs.starttime
+    #     self.endtime = rs.endtime
+    #     self.classify_dict = rs.classfy_dict
+    #
+    #     hostname_list = []
+    #     for url, webname in self.start_urls.items():
+    #         hostname = urllib2.urlparse.urlparse(url).hostname
+    #         if hostname.startswith('www.') and hostname != 'www.gov.cn':
+    #             hostname = hostname[4:]
+    #         hostname_list.append([webname, hostname])
+    #
+    #     for webname, hostname in hostname_list:
+    #         self.create_crawler(webname, hostname)
+    #
+    #     self.conn.close()
 
 
 
 
 if __name__ == '__main__':
-    print time.ctime()
     testspider = Spider()
     testspider.read_mysql_setting()
     if testspider.update_database():
         testspider.run()
     else:
         sys.exit(-1)
-    print time.ctime()
