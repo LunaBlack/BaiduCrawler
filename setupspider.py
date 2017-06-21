@@ -120,6 +120,8 @@ class Spider(object):
         cur.execute('USE %s' % self.database)
         cur.execute('DELETE FROM {table}'.format(table=self.log_table))
         cur.execute('DELETE FROM {table}'.format(table=self.webpages_table))
+        cur.execute('ALTER TABLE {table} AUTO_INCREMENT=1'.format(table=self.log_table))
+        cur.execute('ALTER TABLE {table} AUTO_INCREMENT=1'.format(table=self.webpages_table))
         self.conn.commit()
 
 
@@ -147,7 +149,7 @@ class Spider(object):
     #     hostname_list = []
     #     for url, webname in self.start_urls.items():
     #         hostname = urllib2.urlparse.urlparse(url).hostname
-    #         if hostname.startswith('www.'):
+    #         if hostname.startswith('www.') and hostname != 'www.gov.cn':
     #             hostname = hostname[4:]
     #         hostname_list.append([webname, hostname])
     #
@@ -181,7 +183,7 @@ class Spider(object):
         hostname_list = []
         for url, webname in self.start_urls.items():
             hostname = urllib2.urlparse.urlparse(url).hostname
-            if hostname.startswith('www.'):
+            if hostname.startswith('www.') and hostname != 'www.gov.cn':
                 hostname = hostname[4:]
             hostname_list.append([webname, hostname])
 
@@ -194,9 +196,11 @@ class Spider(object):
 
 
 if __name__ == '__main__':
+    print time.ctime()
     testspider = Spider()
     testspider.read_mysql_setting()
     if testspider.update_database():
         testspider.run()
     else:
         sys.exit(-1)
+    print time.ctime()

@@ -48,4 +48,4 @@ class WriteDatabase(object):
             self.write_log_table(conn, item, 'Drop duplicated item')
 
         except Exception as e:
-            print e
+            pass

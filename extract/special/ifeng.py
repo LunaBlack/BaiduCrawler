@@ -21,7 +21,7 @@ class IfengExtract(object):
     def __init__(self):
         self.title_xpath = "//h1/text()"
         self.publishedtime_xpath = "//span[@itemprop='datePublished']/text()"
-        self.content_xpath = "//div[@id='main_content']//p/text()"
+        self.content_xpath = "//div[@id='main_content']//p//text()"
 
 
     def extract_title(self, tree):

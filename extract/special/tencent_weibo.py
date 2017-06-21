@@ -10,6 +10,7 @@ import requests
 from utils.utils import Utils
 import lxml.html.soupparser as soupparser
 
+from crawl.item import Item
 from utils.time_transform import TimeTransform
 
 
@@ -38,7 +39,7 @@ class TencentWeiboExtract(object):
 
 
     def parse_response(self, response, item):
-        if re.match("http://t.qq.com/p/t/[0-9]+", item.url):  # 短微博
+        if re.match("http://t.qq.com/p/t/[0-9]+", response.url):  # 短微博
             html = response.content
             tree = lxml.etree.HTML(html)
             try:
@@ -49,3 +50,17 @@ class TencentWeiboExtract(object):
 
         else:  # 其它, 如用户首页
             item.urlhash = None
+
+
+
+if __name__ == '__main__':
+    item = Item()
+    url = 'http://t.qq.com/p/t/437207056515577'
+    response = requests.get(url)
+
+    e = TencentWeiboExtract()
+    e.parse_response(response, item)
+
+    print item.title
+    print item.publishedtime
+    print item.content

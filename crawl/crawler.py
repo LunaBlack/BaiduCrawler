@@ -42,7 +42,7 @@ class ThreadCrawler(object):
         self.database = database
 
         self.user_agents = user_agents
-        self.num_thread = 20  # 线程数
+        self.num_thread = 100  # 线程数
 
         self.items_list = []
         self.writedb = WriteDatabase(log_table, webpages_table)
@@ -55,8 +55,8 @@ class ThreadCrawler(object):
         baidu_crawler = BaiduCrawler(self.user_agents, self.baidu_rn)
         param = {'q2': ' '.join(self.allwords).encode('gbk'),
                  'q6': self.hostname,
-                 'gpc': 'stf%3D{starttime}%2C{endtime}|stftype%3D2'.format(starttime=int(time.mktime(self.starttime)),
-                                                                           endtime=int(time.mktime(self.endtime))),
+                 'gpc': 'stf={starttime},{endtime}|stftype=2'.format(starttime=int(time.mktime(self.starttime)),
+                                                                     endtime=int(time.mktime(self.endtime))),
                  'rn': self.baidu_rn
                  }
 
@@ -72,27 +72,31 @@ class ThreadCrawler(object):
 
 
     def process_items(self, element):
-        conn = pymysql.connect(host=self.host, port=self.port, user=self.user, passwd=self.password)
-        cur = conn.cursor()
-        cur.execute('SET NAMES UTF8')
-        cur.execute('USE {database}'.format(database=self.database))
+        try:
+            conn = pymysql.connect(host=self.host, port=self.port, user=self.user, passwd=self.password)
+            cur = conn.cursor()
+            cur.execute('SET NAMES UTF8')
+            cur.execute('USE {database}'.format(database=self.database))
 
-        if element is None:
-            return
+            if element is None:
+                return
 
-        item = Item()
-        self.parse.parse_item(item, element)
-        self.writedb.write_log_table(conn, item, 'Searched item')
+            item = Item()
+            self.parse.parse_item(item, element)
+            self.writedb.write_log_table(conn, item, 'Searched item')
 
-        self.extract.extract_item(conn, item)
-        if item.urlhash:
-            self.classify.classfy_item(item)
-            self.writedb.write_log_table(conn, item, 'Classified item')
-            self.writedb.write_webpages_table(conn, item)
-            self.writedb.write_log_table(conn, item, 'Save item')
-            # self.print_item(item)
+            self.extract.extract_item(conn, item)
+            if item.urlhash:
+                self.classify.classfy_item(item)
+                self.writedb.write_log_table(conn, item, 'Classified item')
+                self.writedb.write_webpages_table(conn, item)
+                self.writedb.write_log_table(conn, item, 'Save item')
+                # self.print_item(item)
 
-        conn.close()
+            conn.close()
+
+        except Exception as e:
+            pass
 
 
     def print_item(self, item):

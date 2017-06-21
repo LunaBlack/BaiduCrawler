@@ -39,7 +39,7 @@ class WangyiExtract(object):
 
     def extract_content(self, tree):
         content = tree.xpath(self.content_xpath)
-        content = '\n'.join(content)
+        content = ''.join(content)
 
         r = re.compile(r'''\n+''', re.M | re.S)
         content = r.sub('\n', content)
@@ -49,7 +49,7 @@ class WangyiExtract(object):
 
 
     def parse_response(self, response, item):
-        html = response.content
+        html = response.text
         tree = lxml.etree.HTML(html)
 
         try:

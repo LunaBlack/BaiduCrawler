@@ -46,7 +46,7 @@ class ExtractItem(object):
             ec = CnrExtract()
         elif self.hostname.endswith('dizhentan.com'):
             ec = DizhentanExtract()
-        elif self.hostname.endswith('gov.cn'):
+        elif self.hostname.endswith('www.gov.cn'):
             ec = GovExtract()
         elif self.hostname.endswith('huanqiu.com'):
             ec = HuanqiuExtract()
@@ -58,8 +58,6 @@ class ExtractItem(object):
             ec = CeaigpExtract()
         elif self.hostname.endswith('people.com.cn'):
             ec = PeopleExtract()
-        elif self.hostname.endswith('qq.com'):
-            ec = QqExtract()
         elif self.hostname.endswith('weibo.com'):
             ec = SinaWeiboExtract()
         elif self.hostname.endswith('sina.com.cn'):
@@ -70,6 +68,8 @@ class ExtractItem(object):
             ec = SouhcnExtract()
         elif self.hostname.endswith('t.qq.com'):
             ec = TencentWeiboExtract()
+        elif self.hostname.endswith('qq.com'):  # 必须在't.qq.com'后
+            ec = QqExtract()
         elif self.hostname.endswith('tieba.baidu.com'):
             ec = TiebaExtract()
         elif self.hostname.endswith('163.com'):

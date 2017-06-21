@@ -184,8 +184,8 @@ class SinaWeiboExtract(object):
 if __name__ == '__main__':
     item = Item()
 
-    # url = "http://weibo.com/1389537561/BgPtMatcA?mod=weibotime&type=comment"
-    url = "http://weibo.com/p/1001593739605047367339?from=singleweibo&mod=recommand_article"
+    url = "http://weibo.com/1389537561/BgPtMatcA?mod=weibotime&type=comment"
+    # url = "http://weibo.com/p/1001593739605047367339?from=singleweibo&mod=recommand_article"
     # url = "http://weibo.com/p/100808d93f8a84e207ec12b9514f1f97a051cb?k=%E4%BA%91%E5%8D%97%E9%B2%81%E7%94%B8%E5%8E%BF6.5%E7%BA%A7%E5%9C%B0%E9%9C%87&from=huati_thread"
 
     response = requests.get(url)
