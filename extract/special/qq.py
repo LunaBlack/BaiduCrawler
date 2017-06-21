@@ -86,7 +86,6 @@ class QqExtract(object):
             item.publishedtime = self.extract_publishedtime(tree)
             item.content = self.extract_content(tree)
         except Exception as e:
-            print e
             item.urlhash = None
 
 

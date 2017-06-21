@@ -50,7 +50,6 @@ class TiebaExtract(object):
             item.title = self.extract_title(tree)
             item.content = self.extract_content(tree)
         except Exception as e:
-            print e
             item.urlhash = None
 
 
